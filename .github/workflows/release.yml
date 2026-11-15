@@ -22,6 +22,9 @@ jobs:
           - name: linux
             os: ubuntu-latest
             args: --linux zip AppImage
+          - name: macos
+            os: macos-latest
+            args: --mac
     steps:
       - uses: actions/checkout@v7
 
@@ -50,6 +53,7 @@ jobs:
             main/release/*.exe
             main/release/*.zip
             main/release/*.AppImage
+            main/release/*.dmg
           if-no-files-found: error
 
   android:
@@ -115,9 +119,78 @@ jobs:
           path: main/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+  ios:
+    name: iOS IPA (unsigned)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: main/package-lock.json
+
+      - name: Install dependencies
+        working-directory: main
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: main
+        run: npm run build
+
+      - name: Add iOS platform
+        working-directory: main
+        run: npx cap add ios
+
+      - name: Declare native permissions
+        working-directory: main
+        run: |
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+
+          path = Path('ios/App/App/Info.plist')
+          with path.open('rb') as fp:
+              info = plistlib.load(fp)
+
+          info['NSCameraUsageDescription'] = '用于拍摄题目照片并发送给所配置的模型服务商'
+          info['NSPhotoLibraryUsageDescription'] = '用于从相册选择题目图片'
+          info['NSPhotoLibraryAddUsageDescription'] = '用于把导出的图片保存到相册'
+          info['UIFileSharingEnabled'] = True
+          info['LSSupportsOpeningDocumentsInPlace'] = True
+
+          with path.open('wb') as fp:
+              plistlib.dump(info, fp)
+          PY
+
+      - name: Install CocoaPods dependencies
+        working-directory: main/ios/App
+        run: pod install
+
+      - name: Build unsigned archive
+        working-directory: main/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+            -sdk iphoneos -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Package IPA
+        working-directory: main/ios/App
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry dxxs-StudyPal-unsigned.ipa Payload
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-ipa
+          path: main/ios/App/dxxs-StudyPal-unsigned.ipa
+          if-no-files-found: error
+
   publish:
     name: Publish Release
-    needs: [desktop, android]
+    needs: [desktop, android, ios]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
@@ -132,5 +205,7 @@ jobs:
             artifacts/*.exe
             artifacts/*.zip
             artifacts/*.AppImage
+            artifacts/*.dmg
             artifacts/*.apk
+            artifacts/*.ipa
           generate_release_notes: true

@@ -29,8 +29,16 @@ nsis:
   deleteAppDataOnUninstall: false
 mac:
   target:
-    - dmg
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
   category: public.app-category.education
+  artifactName: dxxs-StudyPal-${version}-mac-${arch}.${ext}
 linux:
   target:
     - target: zip
