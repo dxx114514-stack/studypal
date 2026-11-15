@@ -1,0 +1,62 @@
+{
+  "name": "dxxs-studypal",
+  "version": "0.1.0",
+  "description": "dxx's StudyPal - 免费开源的全学科 AI 学习伴侣（Electron 桌面 + Capacitor 移动端）",
+  "author": "dxx",
+  "license": "MIT",
+  "private": true,
+  "main": "./out/main/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "preview": "electron-vite preview",
+    "build": "npm run typecheck && electron-vite build",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "typecheck:node": "tsc -p tsconfig.node.json --noEmit",
+    "typecheck:web": "vue-tsc -p tsconfig.web.json --noEmit",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:linux:appimage": "npm run build && electron-builder --linux AppImage",
+    "dist:android": "npm run build && cap sync android && cd android && gradlew.bat assembleDebug",
+    "mobile:add:android": "cap add android",
+    "mobile:add:ios": "cap add ios",
+    "mobile:sync": "npm run build && cap sync",
+    "mobile:open:android": "cap open android",
+    "mobile:open:ios": "cap open ios",
+    "mobile:run:android": "npm run build && cap run android",
+    "example:tree": "tsx example/markdown-tree.ts",
+    "example:srs": "tsx example/srs.ts",
+    "example:ai": "tsx example/ai-stream.ts"
+  },
+  "dependencies": {
+    "@capacitor/camera": "^6.1.2",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/filesystem": "^6.0.3",
+    "@capacitor/local-notifications": "^6.1.0",
+    "@capacitor/share": "^6.0.3",
+    "dexie": "^4.0.10",
+    "katex": "^0.16.11",
+    "marked": "^15.0.4",
+    "pinia": "^2.3.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/ios": "^6.2.0",
+    "@types/node": "^22.10.2",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vue-tsc": "^2.1.10"
+  }
+}

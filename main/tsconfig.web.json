@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "jsx": "preserve"
+  },
+  "include": [
+    "renderer/src/**/*.ts",
+    "renderer/src/**/*.d.ts",
+    "renderer/src/**/*.vue",
+    "core/**/*.ts",
+    "storage/**/*.ts",
+    "mobile/**/*.ts",
+    "electron/bridge.ts"
+  ]
+}

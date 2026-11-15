@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  desktop:
+    name: Desktop (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows
+            os: windows-latest
+            args: --win
+          - name: linux
+            os: ubuntu-latest
+            args: --linux zip AppImage
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: main/package-lock.json
+
+      - name: Install dependencies
+        working-directory: main
+        run: npm ci
+
+      - name: Typecheck and build
+        working-directory: main
+        run: npm run build
+
+      - name: Package
+        working-directory: main
+        run: npx electron-builder ${{ matrix.args }} --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}
+          path: |
+            main/release/*.exe
+            main/release/*.zip
+            main/release/*.AppImage
+          if-no-files-found: error
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: main/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        working-directory: main
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: main
+        run: npm run build
+
+      - name: Add Android platform
+        working-directory: main
+        run: npx cap add android
+
+      - name: Declare native permissions
+        working-directory: main
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('android/app/src/main/AndroidManifest.xml')
+          xml = path.read_text(encoding='utf-8')
+          lines = ''.join(
+              f'    <uses-permission android:name="{name}" />\n'
+              for name in (
+                  'android.permission.CAMERA',
+                  'android.permission.READ_MEDIA_IMAGES',
+                  'android.permission.POST_NOTIFICATIONS',
+              )
+          )
+          lines += '    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n'
+          lines += '    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />\n'
+          lines += '    <uses-feature android:name="android.hardware.camera" android:required="false" />\n'
+          path.write_text(xml.replace('</manifest>', lines + '</manifest>'), encoding='utf-8')
+          PY
+
+      - name: Assemble debug APK
+        working-directory: main/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: main/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  publish:
+    name: Publish Release
+    needs: [desktop, android]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*.exe
+            artifacts/*.zip
+            artifacts/*.AppImage
+            artifacts/*.apk
+          generate_release_notes: true

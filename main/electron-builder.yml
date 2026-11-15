@@ -1,0 +1,40 @@
+appId: org.dxx.studypal
+productName: dxxs StudyPal
+copyright: Copyright © 2026 dxx
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+asar: true
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/
+asarUnpack:
+  - resources/**
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
+  artifactName: dxxs-StudyPal-${version}-win-${arch}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+mac:
+  target:
+    - dmg
+  category: public.app-category.education
+linux:
+  target:
+    - target: zip
+      arch:
+        - x64
+  category: Education
+  artifactName: dxxs-StudyPal-${version}-linux-${arch}.${ext}

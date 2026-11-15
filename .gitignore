@@ -1,0 +1,13 @@
+node_modules/
+out/
+release/
+dist/
+*.local
+*.log
+.DS_Store
+android/
+ios/
+
+# docs 推送到 GitHub Wiki，不进入主仓库
+wikis/
+tmp/
