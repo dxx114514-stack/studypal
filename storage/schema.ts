@@ -2,9 +2,10 @@ import type { ImageInput } from '../core/types/chat'
 import type { ReviewCard } from '../core/types/card'
 import type { FeatureKey, ProviderConfig, ProviderKeyStorage } from '../core/types/provider'
 import type { StudyPlan } from '../core/types/plan'
+import type { VocabWord } from '../core/types/vocab'
 
 export const DB_NAME = 'dxxs-studypal'
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 export const SETTINGS_KEY_APP = 'app'
 
 export interface StoredSetting {
@@ -61,6 +62,7 @@ export interface TableMap {
   conversations: StoredConversation
   messages: StoredMessage
   plans: StudyPlan
+  words: VocabWord
 }
 
 export type TableName = keyof TableMap
@@ -72,12 +74,13 @@ export const TABLE_NAMES: TableName[] = [
   'notes',
   'conversations',
   'messages',
-  'plans'
+  'plans',
+  'words'
 ]
 
 /** v1 索引定义，保留用于 Dexie 升级链 */
 export const LEGACY_TABLE_SCHEMAS_V1: Record<
-  Exclude<TableName, 'plans'>,
+  Exclude<TableName, 'plans' | 'words'>,
   string
 > = {
   settings: 'key',
@@ -88,8 +91,14 @@ export const LEGACY_TABLE_SCHEMAS_V1: Record<
   messages: 'id, conversationId, createdAt'
 }
 
-/** 当前版本索引定义（桌面与移动端一致） */
-export const TABLE_SCHEMAS: Record<TableName, string> = {
+/** v2 索引定义（新增 plans） */
+export const LEGACY_TABLE_SCHEMAS_V2: Record<Exclude<TableName, 'words'>, string> = {
   ...LEGACY_TABLE_SCHEMAS_V1,
   plans: 'id, date, done, reminderAt'
+}
+
+/** 当前版本索引定义（桌面与移动端一致） */
+export const TABLE_SCHEMAS: Record<TableName, string> = {
+  ...LEGACY_TABLE_SCHEMAS_V2,
+  words: 'id, book, word, createdAt'
 }

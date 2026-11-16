@@ -1,12 +1,13 @@
 import Dexie from 'dexie'
 import type { StorageDriver } from './driver'
-import { DB_NAME, LEGACY_TABLE_SCHEMAS_V1, SCHEMA_VERSION, TABLE_SCHEMAS, type TableMap, type TableName } from './schema'
+import { DB_NAME, LEGACY_TABLE_SCHEMAS_V1, LEGACY_TABLE_SCHEMAS_V2, SCHEMA_VERSION, TABLE_SCHEMAS, type TableMap, type TableName } from './schema'
 import { wrapStorageError } from './errors'
 
 class StudyPalDatabase extends Dexie {
   constructor() {
     super(DB_NAME)
     this.version(1).stores(LEGACY_TABLE_SCHEMAS_V1)
+    this.version(2).stores(LEGACY_TABLE_SCHEMAS_V2)
     this.version(SCHEMA_VERSION).stores(TABLE_SCHEMAS)
   }
 }

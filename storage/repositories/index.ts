@@ -5,6 +5,7 @@ import { CardRepository } from './cards'
 import { NoteRepository } from './notes'
 import { ConversationRepository } from './conversations'
 import { PlanRepository } from './plans'
+import { WordRepository } from './words'
 
 export function createRepositories(driver: StorageDriver) {
   return {
@@ -13,7 +14,8 @@ export function createRepositories(driver: StorageDriver) {
     cards: new CardRepository(driver),
     notes: new NoteRepository(driver),
     conversations: new ConversationRepository(driver),
-    plans: new PlanRepository(driver)
+    plans: new PlanRepository(driver),
+    words: new WordRepository(driver)
   }
 }
 
@@ -25,5 +27,6 @@ export {
   CardRepository,
   NoteRepository,
   ConversationRepository,
-  PlanRepository
+  PlanRepository,
+  WordRepository
 }

@@ -8,6 +8,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/writing', name: 'writing', component: () => import('../views/WritingView.vue'), meta: { title: '写作批改' } },
   { path: '/mindmap', name: 'mindmap', component: () => import('../views/MindMapView.vue'), meta: { title: '思维导图' } },
   { path: '/cards', name: 'cards', component: () => import('../views/CardsView.vue'), meta: { title: '复习卡片' } },
+  { path: '/words', name: 'words', component: () => import('../views/WordsView.vue'), meta: { title: '背单词' } },
   { path: '/mistakes', name: 'mistakes', component: () => import('../views/MistakesView.vue'), meta: { title: '错题本' } },
   { path: '/settings', name: 'settings', component: () => import('../views/SettingsView.vue'), meta: { title: '设置' } },
   { path: '/:pathMatch(.*)*', redirect: '/' }

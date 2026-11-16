@@ -16,6 +16,7 @@ const navItems = [
   { path: '/writing', label: '批改', icon: 'M5 19h4L20 8l-4-4L5 15zM14 6l4 4' },
   { path: '/mindmap', label: '导图', icon: 'M4 5h6v4H4zM14 3h6v4h-6zM14 15h6v4h-6zM10 7h4M13 5v11h1' },
   { path: '/cards', label: '卡片', icon: 'M6 3h12v18H6zM9 8h6M9 12h6M9 16h4' },
+  { path: '/words', label: '单词', icon: 'M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2zM12 6v14' },
   { path: '/mistakes', label: '错题', icon: 'M6 3h12v18H6zM9 9l6 6M15 9l-6 6' },
   { path: '/settings', label: '设置', icon: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2' }
 ]
