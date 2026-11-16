@@ -1,6 +1,6 @@
 import { newId } from '../../core/utils/id'
 import { normalizeKey } from '../../core/vocab/parse'
-import type { VocabEntry, VocabWord, WordBookSummary } from '../../core/types/vocab'
+import type { QuizRecord, VocabEntry, VocabWord, WordBookSummary } from '../../core/types/vocab'
 import type { StorageDriver } from '../driver'
 
 export interface ImportWordsResult {
@@ -82,5 +82,19 @@ export class WordRepository {
 
   async remove(id: string): Promise<void> {
     await this.driver.remove('words', id)
+  }
+
+  async saveResult(record: QuizRecord): Promise<QuizRecord> {
+    await this.driver.put('quizRecords', record)
+    return record
+  }
+
+  async listResults(limit = 20): Promise<QuizRecord[]> {
+    const rows = await this.driver.all('quizRecords')
+    return rows.sort((a, b) => b.createdAt - a.createdAt).slice(0, limit)
+  }
+
+  async clearResults(): Promise<void> {
+    await this.driver.clear('quizRecords')
   }
 }

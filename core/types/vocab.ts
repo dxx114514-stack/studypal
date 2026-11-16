@@ -41,3 +41,20 @@ export interface WordBookSummary {
   count: number
   updatedAt: number
 }
+
+export interface QuizWrongItem {
+  prompt: string
+  answer: string
+  given: string
+}
+
+/** 一次已完成测验的成绩记录 */
+export interface QuizRecord {
+  id: string
+  book: string
+  mode: QuizMode
+  total: number
+  correct: number
+  wrong: QuizWrongItem[]
+  createdAt: number
+}

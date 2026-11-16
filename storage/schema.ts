@@ -2,10 +2,10 @@ import type { ImageInput } from '../core/types/chat'
 import type { ReviewCard } from '../core/types/card'
 import type { FeatureKey, ProviderConfig, ProviderKeyStorage } from '../core/types/provider'
 import type { StudyPlan } from '../core/types/plan'
-import type { VocabWord } from '../core/types/vocab'
+import type { QuizRecord, VocabWord } from '../core/types/vocab'
 
 export const DB_NAME = 'dxxs-studypal'
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 export const SETTINGS_KEY_APP = 'app'
 
 export interface StoredSetting {
@@ -63,6 +63,7 @@ export interface TableMap {
   messages: StoredMessage
   plans: StudyPlan
   words: VocabWord
+  quizRecords: QuizRecord
 }
 
 export type TableName = keyof TableMap
@@ -75,12 +76,13 @@ export const TABLE_NAMES: TableName[] = [
   'conversations',
   'messages',
   'plans',
-  'words'
+  'words',
+  'quizRecords'
 ]
 
 /** v1 索引定义，保留用于 Dexie 升级链 */
 export const LEGACY_TABLE_SCHEMAS_V1: Record<
-  Exclude<TableName, 'plans' | 'words'>,
+  Exclude<TableName, 'plans' | 'words' | 'quizRecords'>,
   string
 > = {
   settings: 'key',
@@ -92,13 +94,22 @@ export const LEGACY_TABLE_SCHEMAS_V1: Record<
 }
 
 /** v2 索引定义（新增 plans） */
-export const LEGACY_TABLE_SCHEMAS_V2: Record<Exclude<TableName, 'words'>, string> = {
+export const LEGACY_TABLE_SCHEMAS_V2: Record<
+  Exclude<TableName, 'words' | 'quizRecords'>,
+  string
+> = {
   ...LEGACY_TABLE_SCHEMAS_V1,
   plans: 'id, date, done, reminderAt'
 }
 
-/** 当前版本索引定义（桌面与移动端一致） */
-export const TABLE_SCHEMAS: Record<TableName, string> = {
+/** v3 索引定义（新增 words） */
+export const LEGACY_TABLE_SCHEMAS_V3: Record<Exclude<TableName, 'quizRecords'>, string> = {
   ...LEGACY_TABLE_SCHEMAS_V2,
   words: 'id, book, word, createdAt'
+}
+
+/** 当前版本索引定义（桌面与移动端一致） */
+export const TABLE_SCHEMAS: Record<TableName, string> = {
+  ...LEGACY_TABLE_SCHEMAS_V3,
+  quizRecords: 'id, book, createdAt'
 }

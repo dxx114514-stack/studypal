@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import type { QuizMode, QuizQuestion, WordBookSummary } from '@core/types/vocab'
+import type { QuizMode, QuizQuestion, QuizRecord, WordBookSummary } from '@core/types/vocab'
 import { parseWordList } from '@core/vocab/parse'
 import { buildQuiz, DEFAULT_QUIZ_COUNT, gradeTextInput } from '@core/vocab/quiz'
+import { newId } from '@core/utils/id'
+import { formatClock, formatDateLabel, toDateKey } from '@core/utils/date'
 import { repos } from '@storage/index'
 import { getPlatform } from '../services/platform'
 
@@ -19,6 +21,7 @@ determine,v. 决定；查明`
 
 const tab = ref<'books' | 'quiz'>('books')
 const books = ref<WordBookSummary[]>([])
+const records = ref<QuizRecord[]>([])
 const loading = ref(false)
 
 const bookName = ref('我的词库')
@@ -49,6 +52,7 @@ async function refreshBooks(): Promise<void> {
   loading.value = true
   try {
     books.value = await repos.words.listBooks()
+    records.value = await repos.words.listResults(10)
     if (!selectedBook.value && books.value.length > 0) selectedBook.value = books.value[0].book
   } finally {
     loading.value = false
@@ -163,6 +167,7 @@ function recordWrong(given: string): void {
 function nextQuestion(): void {
   if (index.value + 1 >= questions.value.length) {
     finished.value = true
+    void saveResult()
     return
   }
   index.value += 1
@@ -170,6 +175,30 @@ function nextQuestion(): void {
   inputAnswer.value = ''
   answered.value = false
   lastCorrect.value = false
+}
+
+async function saveResult(): Promise<void> {
+  const record: QuizRecord = {
+    id: newId('quiz'),
+    book: selectedBook.value,
+    mode: mode.value,
+    total: questions.value.length,
+    correct: score.value,
+    wrong: [...wrongList.value],
+    createdAt: Date.now()
+  }
+  await repos.words.saveResult(record)
+  records.value = await repos.words.listResults(10)
+}
+
+async function clearRecords(): Promise<void> {
+  if (!window.confirm('清空全部背单词成绩记录？')) return
+  await repos.words.clearResults()
+  records.value = []
+}
+
+function modeLabel(value: QuizMode): string {
+  return MODES.find((item) => item.id === value)?.label ?? value
 }
 </script>
 
@@ -225,6 +254,23 @@ function nextQuestion(): void {
           </div>
         </li>
       </ul>
+
+      <h2 class="section-title">最近成绩</h2>
+      <p v-if="records.length === 0" class="hint">还没有测验记录，完成一轮测验后会自动保存。</p>
+      <template v-else>
+        <ul class="record-list">
+          <li v-for="item in records" :key="item.id" class="record">
+            <div class="record-main">
+              <strong>{{ item.correct }} / {{ item.total }}</strong>
+              <span class="record-meta">{{ item.book }} · {{ modeLabel(item.mode) }}</span>
+            </div>
+            <span class="record-time">
+              {{ formatDateLabel(toDateKey(new Date(item.createdAt))) }} {{ formatClock(item.createdAt) }}
+            </span>
+          </li>
+        </ul>
+        <button class="btn ghost sm" type="button" @click="clearRecords">清空记录</button>
+      </template>
     </section>
 
     <!-- 测验 -->
@@ -641,6 +687,42 @@ function nextQuestion(): void {
   margin: 0;
   color: #2f9e6a;
   font-size: 14px;
+}
+
+.record-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13.5px;
+}
+
+.record-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.record-main strong {
+  font-size: 15px;
+}
+
+.record-meta,
+.record-time {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 @media (max-width: 720px) {
