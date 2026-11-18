@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { ImageInput } from '@core/types/chat'
 import { buildQaPrompt, type QaMode } from '@core/prompts/qa'
 import { createCardFromDraft } from '@core/cards/factory'
+import { stripThinking } from '@core/utils/thinking'
 import { repos } from '@storage/index'
 import { runFeature } from '../services/aiRuntime'
 import { useAiTask } from '../composables/useAiTask'
@@ -48,7 +49,7 @@ async function ask(): Promise<void> {
 
 async function copyOutput(): Promise<void> {
   if (!output.value) return
-  await navigator.clipboard.writeText(output.value)
+  await navigator.clipboard.writeText(stripThinking(output.value) || output.value)
   copied.value = true
   window.setTimeout(() => {
     copied.value = false
@@ -61,7 +62,7 @@ async function saveToMistakes(): Promise<void> {
     {
       type: 'question',
       front: question.value.trim() || '（图片题目，见解析）',
-      back: output.value,
+      back: stripThinking(output.value) || output.value,
       tags: [settingsStore.settings.subject, '答疑']
     },
     { subject: settingsStore.settings.subject, source: 'qa', intervals: settingsStore.settings.reviewIntervals }

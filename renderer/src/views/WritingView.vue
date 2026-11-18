@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { buildWritingPrompt, type WritingLanguage } from '@core/prompts/writing'
+import { stripThinking } from '@core/utils/thinking'
 import { runFeature } from '../services/aiRuntime'
 import { useAiTask } from '../composables/useAiTask'
 import { useSettingsStore } from '../stores/settings'
@@ -27,7 +28,7 @@ const canSubmit = computed(() => essay.value.trim().length > 0)
 
 async function copyOutput(): Promise<void> {
   if (!output.value) return
-  await navigator.clipboard.writeText(output.value)
+  await navigator.clipboard.writeText(stripThinking(output.value) || output.value)
   copied.value = true
   window.setTimeout(() => {
     copied.value = false
