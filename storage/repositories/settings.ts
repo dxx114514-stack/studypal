@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, type AppSettings } from '../../core/types/settings'
+import { DEFAULT_SETTINGS, normalizeSearchSettings, type AppSettings } from '../../core/types/settings'
 import type { StorageDriver } from '../driver'
 import { SETTINGS_KEY_APP } from '../schema'
 
@@ -15,7 +15,7 @@ export class SettingsRepository {
       reviewIntervals: Array.isArray(stored.reviewIntervals)
         ? stored.reviewIntervals
         : DEFAULT_SETTINGS.reviewIntervals,
-      search: { ...DEFAULT_SETTINGS.search, ...(stored.search ?? {}) }
+      search: normalizeSearchSettings(stored.search)
     }
   }
 

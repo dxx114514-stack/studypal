@@ -6,7 +6,7 @@ import { buildChatSystemPrompt } from '@core/prompts/chat'
 import type { StoredConversation, StoredMessage } from '@storage/schema'
 import { repos } from '@storage/index'
 import { runFeature } from '../services/aiRuntime'
-import { readSearchKey, runSearch } from '../services/searchRuntime'
+import { readSearchKey, runSearch, searchProviderLabel } from '../services/searchRuntime'
 import { useAiTask } from '../composables/useAiTask'
 import { useSettingsStore } from '../stores/settings'
 import ImagePicker from '../components/ImagePicker.vue'
@@ -75,7 +75,7 @@ async function onWebSearchToggle(event: Event): Promise<void> {
   if (!apiKey) {
     checkbox.checked = false
     webSearch.value = false
-    searchError.value = '请先在设置页填写联网搜索的 API Key'
+    searchError.value = `请先在设置页填写 ${searchProviderLabel(settingsStore.settings.search.provider)} 的 API Key`
     return
   }
   webSearch.value = true

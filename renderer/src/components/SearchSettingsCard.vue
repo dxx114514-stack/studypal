@@ -1,27 +1,43 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { SearchProvider } from '@core/search/types'
+import { searchKeySlot } from '@core/types/settings'
 import { useSettingsStore } from '../stores/settings'
-import { saveSearchKey } from '../services/searchRuntime'
+import { searchProviderLabel, saveSearchKey } from '../services/searchRuntime'
 
 const settingsStore = useSettingsStore()
 
 const provider = ref<SearchProvider>('tavily')
 const maxResults = ref(5)
 const apiKey = ref('')
-const hasKey = ref(false)
 const message = ref('')
 const saving = ref(false)
+
+const keyStates = computed(() => {
+  const search = settingsStore.settings.search
+  const has = (target: SearchProvider): boolean => {
+    const slot = searchKeySlot(search, target)
+    return Boolean(slot?.keyCipher || slot?.keyPlain)
+  }
+  return { tavily: has('tavily'), serper: has('serper') }
+})
+
+const hasKey = computed(() => keyStates.value[provider.value])
+const providerName = computed(() => searchProviderLabel(provider.value))
 
 watch(
   () => settingsStore.settings.search,
   (search) => {
     provider.value = search.provider
     maxResults.value = search.maxResults
-    hasKey.value = Boolean(search.keyCipher || search.keyPlain)
   },
   { immediate: true, deep: true }
 )
+
+watch(provider, () => {
+  apiKey.value = ''
+  message.value = ''
+})
 
 async function save(): Promise<void> {
   if (saving.value) return
@@ -35,14 +51,13 @@ async function save(): Promise<void> {
       search: { ...settingsStore.settings.search, provider: provider.value, maxResults: count }
     })
     if (trimmedKey) {
-      await saveSearchKey(trimmedKey)
+      await saveSearchKey(provider.value, trimmedKey)
       await settingsStore.load()
       apiKey.value = ''
     }
-    hasKey.value = Boolean(
-      settingsStore.settings.search.keyCipher || settingsStore.settings.search.keyPlain
-    )
-    message.value = hasKey.value ? '联网搜索设置已保存' : '设置已保存，填写 API Key 后即可在对话页使用'
+    message.value = hasKey.value
+      ? `${providerName.value} 的 Key 已保存`
+      : '设置已保存，填写 API Key 后即可在对话页使用'
   } catch (error) {
     message.value = error instanceof Error ? `保存失败：${error.message}` : '保存失败'
   } finally {
@@ -55,8 +70,8 @@ async function save(): Promise<void> {
   <section class="card">
     <div class="section-title">
       <h2>联网搜索</h2>
-      <span v-if="hasKey" class="badge ok">已配置 Key</span>
-      <span v-else class="badge danger">缺少 Key</span>
+      <span v-if="hasKey" class="badge ok">已配置 {{ providerName }} Key</span>
+      <span v-else class="badge danger">缺少 {{ providerName }} Key</span>
     </div>
 
     <p class="hint">在对话页开启「联网」后，提问会先搜索并把结果交给模型参考。Key 只保存在本机。</p>
@@ -76,17 +91,21 @@ async function save(): Promise<void> {
       </div>
 
       <div class="field span-2">
-        <label for="search-key">API Key</label>
+        <label for="search-key">{{ providerName }} API Key</label>
         <input
           id="search-key"
           v-model="apiKey"
           type="password"
           autocomplete="off"
-          :placeholder="hasKey ? '留空表示不修改已保存的 Key' : '填写对应服务商的 API Key'"
+          :placeholder="hasKey ? '留空表示不修改已保存的 Key' : `填写 ${providerName} 的 API Key`"
         />
-        <span class="hint">Tavily 与 Serper 需分别申请 Key，切换服务商后请确认 Key 与之匹配。</span>
       </div>
     </div>
+
+    <p class="hint key-state">
+      Tavily：{{ keyStates.tavily ? '已配置' : '未配置' }} · Serper：{{ keyStates.serper ? '已配置' : '未配置' }}
+      （两家 Key 分别保存，切换服务商不会互相覆盖）
+    </p>
 
     <div class="row save-row">
       <button class="btn primary" type="button" :disabled="saving" @click="save">
@@ -108,6 +127,10 @@ async function save(): Promise<void> {
 
 .span-2 {
   grid-column: span 2;
+}
+
+.key-state {
+  margin-top: 10px;
 }
 
 .save-row {

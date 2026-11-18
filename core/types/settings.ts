@@ -4,12 +4,22 @@ import type { SearchProvider } from '../search/types'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
-export interface SearchSettings {
-  provider: SearchProvider
-  maxResults: number
+export interface SearchProviderKey {
   /** Electron 系统安全存储加密后的密文 */
   keyCipher?: string
   /** 无安全存储能力时的明文兜底（仅存本机，绝不上传） */
+  keyPlain?: string
+}
+
+export interface SearchSettings {
+  provider: SearchProvider
+  maxResults: number
+  /** Tavily 的 Key，与 Serper 独立保存 */
+  tavilyKey?: SearchProviderKey
+  /** Serper 的 Key，与 Tavily 独立保存 */
+  serperKey?: SearchProviderKey
+  /** 旧版单 Key 字段，仅用于读取时迁移 */
+  keyCipher?: string
   keyPlain?: string
 }
 
@@ -39,4 +49,28 @@ export const DEFAULT_SETTINGS: AppSettings = {
   onboardingDone: false,
   reviewIntervals: [1, 3, 7, 14, 30],
   search: { provider: 'tavily', maxResults: 5 }
+}
+
+/** 取指定服务商的 Key 槽位 */
+export function searchKeySlot(
+  settings: SearchSettings,
+  provider: SearchProvider = settings.provider
+): SearchProviderKey | undefined {
+  return provider === 'tavily' ? settings.tavilyKey : settings.serperKey
+}
+
+/** 补齐默认值，并把旧版单 Key 结构迁移到当时选中的服务商槽位 */
+export function normalizeSearchSettings(input?: Partial<SearchSettings>): SearchSettings {
+  const merged: SearchSettings = { ...DEFAULT_SETTINGS.search, ...(input ?? {}) }
+
+  if ((merged.keyCipher || merged.keyPlain) && !merged.tavilyKey && !merged.serperKey) {
+    const migrated: SearchProviderKey = { keyCipher: merged.keyCipher, keyPlain: merged.keyPlain }
+    if (merged.provider === 'serper') merged.serperKey = migrated
+    else merged.tavilyKey = migrated
+  }
+
+  const cleaned: SearchSettings = { ...merged }
+  delete cleaned.keyCipher
+  delete cleaned.keyPlain
+  return cleaned
 }
