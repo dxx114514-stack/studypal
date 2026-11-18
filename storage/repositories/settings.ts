@@ -14,7 +14,8 @@ export class SettingsRepository {
       featureProviders: { ...DEFAULT_SETTINGS.featureProviders, ...(stored.featureProviders ?? {}) },
       reviewIntervals: Array.isArray(stored.reviewIntervals)
         ? stored.reviewIntervals
-        : DEFAULT_SETTINGS.reviewIntervals
+        : DEFAULT_SETTINGS.reviewIntervals,
+      search: { ...DEFAULT_SETTINGS.search, ...(stored.search ?? {}) }
     }
   }
 

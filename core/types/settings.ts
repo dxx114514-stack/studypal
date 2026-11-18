@@ -1,7 +1,17 @@
 import type { FeatureKey } from './provider'
 import type { StudyStage } from './curriculum'
+import type { SearchProvider } from '../search/types'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+
+export interface SearchSettings {
+  provider: SearchProvider
+  maxResults: number
+  /** Electron 系统安全存储加密后的密文 */
+  keyCipher?: string
+  /** 无安全存储能力时的明文兜底（仅存本机，绝不上传） */
+  keyPlain?: string
+}
 
 export interface AppSettings {
   theme: ThemeMode
@@ -15,6 +25,8 @@ export interface AppSettings {
   onboardingDone: boolean
   /** 复习间隔（天），可在设置中调整 */
   reviewIntervals: number[]
+  /** 联网搜索配置（对话页手动开关时使用） */
+  search: SearchSettings
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -25,5 +37,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   featureProviders: {},
   localProxyEnabled: false,
   onboardingDone: false,
-  reviewIntervals: [1, 3, 7, 14, 30]
+  reviewIntervals: [1, 3, 7, 14, 30],
+  search: { provider: 'tavily', maxResults: 5 }
 }

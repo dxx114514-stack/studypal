@@ -13,6 +13,7 @@ import { useSettingsStore } from '../stores/settings'
 import { useProvidersStore } from '../stores/providers'
 import { getPlatform, isElectron } from '../services/platform'
 import ProviderForm from '../components/ProviderForm.vue'
+import SearchSettingsCard from '../components/SearchSettingsCard.vue'
 
 const settingsStore = useSettingsStore()
 const providersStore = useProvidersStore()
@@ -316,6 +317,8 @@ async function clearAll(): Promise<void> {
         单个提供商还需在编辑页勾选「使用本地代理」。
       </p>
     </section>
+
+    <SearchSettingsCard />
 
     <section class="card">
       <div class="section-title">

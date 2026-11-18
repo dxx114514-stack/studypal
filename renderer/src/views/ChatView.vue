@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from 'vue'
 import type { AIMessage, ImageInput } from '@core/types/chat'
+import type { SearchResult } from '@core/search/types'
 import { buildChatSystemPrompt } from '@core/prompts/chat'
 import type { StoredConversation, StoredMessage } from '@storage/schema'
 import { repos } from '@storage/index'
 import { runFeature } from '../services/aiRuntime'
+import { readSearchKey, runSearch } from '../services/searchRuntime'
 import { useAiTask } from '../composables/useAiTask'
 import { useSettingsStore } from '../stores/settings'
 import ImagePicker from '../components/ImagePicker.vue'
@@ -17,6 +19,12 @@ const messages = ref<StoredMessage[]>([])
 const input = ref('')
 const image = ref<ImageInput | null>(null)
 const scrollArea = ref<HTMLElement | null>(null)
+
+const webSearch = ref(false)
+const searching = ref(false)
+const searchError = ref('')
+const searchInfo = ref('')
+let searchController: AbortController | null = null
 
 const { output, running, error, run, abort, reset } = useAiTask()
 
@@ -56,9 +64,73 @@ async function buildMistakeSummary(): Promise<string | undefined> {
     .join('\n')
 }
 
+async function onWebSearchToggle(event: Event): Promise<void> {
+  const checkbox = event.target as HTMLInputElement
+  if (!checkbox.checked) {
+    webSearch.value = false
+    return
+  }
+
+  const apiKey = await readSearchKey()
+  if (!apiKey) {
+    checkbox.checked = false
+    webSearch.value = false
+    searchError.value = '请先在设置页填写联网搜索的 API Key'
+    return
+  }
+  webSearch.value = true
+  searchError.value = ''
+}
+
+function formatSearchContext(results: SearchResult[]): string {
+  const lines = ['请优先参考以下联网搜索结果，并标注引用的编号：']
+  results.forEach((result, index) => {
+    lines.push(`[${index + 1}] ${result.title} - ${result.url}`)
+    if (result.snippet) lines.push(result.snippet.replace(/\s+/g, ' ').trim())
+  })
+  return lines.join('\n')
+}
+
+/** 返回要注入的搜索上下文；被用户中止时返回 null */
+async function searchBeforeAnswer(text: string): Promise<string | null> {
+  searching.value = true
+  searchError.value = ''
+  searchInfo.value = ''
+  searchController = new AbortController()
+
+  try {
+    const results = await runSearch(text, { signal: searchController.signal })
+    if (results.length === 0) {
+      searchInfo.value = '联网搜索没有找到相关结果，将直接回答。'
+      return ''
+    }
+    return formatSearchContext(results)
+  } catch (caught) {
+    if (searchController?.signal.aborted) {
+      searchInfo.value = '已取消联网搜索'
+      return null
+    }
+    const message = caught instanceof Error && caught.message ? caught.message : '未知错误'
+    searchError.value = `本次联网搜索失败：${message}`
+    return `本次联网搜索失败（${message}）。请基于已有知识回答，并说明未能联网核实。`
+  } finally {
+    searching.value = false
+    searchController = null
+  }
+}
+
 async function send(): Promise<void> {
   const text = input.value.trim()
-  if ((!text && !image.value) || running.value) return
+  if ((!text && !image.value) || running.value || searching.value) return
+
+  searchError.value = ''
+  searchInfo.value = ''
+  let searchContext = ''
+  if (webSearch.value && text) {
+    const context = await searchBeforeAnswer(text)
+    if (context === null) return
+    searchContext = context
+  }
 
   const currentImage = image.value
   const id = await ensureConversation(text || '图片提问')
@@ -80,11 +152,20 @@ async function send(): Promise<void> {
       images: message.images
     }))
 
+  // 搜索结果只注入本次请求，不改动本地保存的原始提问
+  if (searchContext) {
+    const lastUser = history[history.length - 1]
+    if (lastUser?.role === 'user') {
+      lastUser.content = `${searchContext}\n\n用户问题：\n${lastUser.content}`
+    }
+  }
+
   const systemPrompt = buildChatSystemPrompt({
     stage: settingsStore.settings.stage,
     subject: settingsStore.settings.subject,
     mistakeSummary: await buildMistakeSummary(),
-    hasImage: Boolean(currentImage)
+    hasImage: Boolean(currentImage),
+    webSearch: Boolean(searchContext)
   })
 
   await run(async ({ signal, onDelta }) => {
@@ -112,10 +193,17 @@ function onKeydown(event: KeyboardEvent): void {
   }
 }
 
-function newChat(): void {
+function stopAll(): void {
   abort()
+  searchController?.abort()
+}
+
+function newChat(): void {
+  stopAll()
   conversationId.value = null
   messages.value = []
+  searchError.value = ''
+  searchInfo.value = ''
   reset()
 }
 
@@ -125,9 +213,11 @@ async function onConversationChange(event: Event): Promise<void> {
     newChat()
     return
   }
-  abort()
+  stopAll()
   conversationId.value = id
   messages.value = await repos.conversations.listMessages(id)
+  searchError.value = ''
+  searchInfo.value = ''
   reset()
 }
 
@@ -201,10 +291,25 @@ async function deleteCurrentConversation(): Promise<void> {
         {{ error.message }}<br />
         <span class="hint">{{ error.hint }}</span>
       </p>
+
+      <p v-if="searchError" class="error-box">{{ searchError }}</p>
+      <p v-else-if="searchInfo" class="hint search-info">{{ searchInfo }}</p>
     </div>
 
     <footer class="composer">
       <ImagePicker v-model="image" />
+      <div class="composer-tools">
+        <label class="web-toggle" :class="{ active: webSearch }">
+          <input
+            type="checkbox"
+            :checked="webSearch"
+            :disabled="running || searching"
+            @change="onWebSearchToggle"
+          />
+          联网
+        </label>
+        <span v-if="searching" class="search-status"><span class="spinner" /> 正在搜索…</span>
+      </div>
       <div class="composer-row">
         <textarea
           v-model="input"
@@ -212,10 +317,15 @@ async function deleteCurrentConversation(): Promise<void> {
           placeholder="输入问题，Enter 发送，Shift + Enter 换行"
           @keydown="onKeydown"
         />
-        <button class="btn primary" type="button" :disabled="(!input.trim() && !image) || running" @click="send">
+        <button
+          class="btn primary"
+          type="button"
+          :disabled="(!input.trim() && !image) || running || searching"
+          @click="send"
+        >
           发送
         </button>
-        <button v-if="running" class="btn" type="button" @click="abort">停止</button>
+        <button v-if="running || searching" class="btn" type="button" @click="stopAll">停止</button>
       </div>
     </footer>
   </div>
@@ -324,6 +434,51 @@ async function deleteCurrentConversation(): Promise<void> {
   display: flex;
   gap: 8px;
   align-items: flex-end;
+}
+
+.composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.web-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.web-toggle.active {
+  border-color: var(--brand);
+  background: var(--brand-weak);
+  color: var(--brand-strong);
+}
+
+.web-toggle input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+
+.search-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.search-info {
+  margin: 0;
 }
 
 .composer-row textarea {

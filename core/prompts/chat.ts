@@ -8,6 +8,8 @@ export interface ChatPromptOptions {
   mistakeSummary?: string
   weakPoints?: string[]
   hasImage?: boolean
+  /** 本次提问已注入联网搜索结果 */
+  webSearch?: boolean
 }
 
 export function buildChatSystemPrompt(options: ChatPromptOptions): string {
@@ -25,6 +27,11 @@ export function buildChatSystemPrompt(options: ChatPromptOptions): string {
 
   if (options.hasImage) {
     parts.push('7. 用户可能上传了图片，请先描述你识别到的关键信息，再进行讲解。')
+  }
+  if (options.webSearch) {
+    parts.push(
+      '联网搜索说明：本次回答注入了联网搜索结果，结果可能过时或不准确；与题面冲突时以题面和常识为准，引用时用 [1][2] 等编号标注。'
+    )
   }
   if (options.mistakeSummary?.trim()) {
     parts.push('', '用户近期错题摘要（可用于举一反三，不要机械复述）：', options.mistakeSummary.trim())
